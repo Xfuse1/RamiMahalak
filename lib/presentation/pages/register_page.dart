@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:form_field_validator/form_field_validator.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:mahlak_nem/core/constants/app_colors.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -11,21 +13,76 @@ class RegisterPage extends StatefulWidget {
 
 class _RegisterPageState extends State<RegisterPage> {
   final _formKey = GlobalKey<FormState>();
-  final TextEditingController _identifierController = TextEditingController();
-  final TextEditingController _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _governorateController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _streetController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
   @override
   void dispose() {
-    _identifierController.dispose();
-    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _governorateController.dispose();
+    _cityController.dispose();
+    _streetController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState?.validate() ?? false) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إنشاء الحساب (تجريبي)')),
-      );
+      try {
+        final email = _emailController.text.trim();
+        final password = _passwordController.text.trim();
+        final phone = _phoneController.text.trim();
+        final governorate = _governorateController.text.trim();
+        final city = _cityController.text.trim();
+        final street = _streetController.text.trim();
+
+        final authResponse = await Supabase.instance.client.auth.signUp(
+          email: email,
+          password: password,
+          data: {
+            'phone': phone,
+            'governorate': governorate,
+            'city': city,
+            'street': street,
+          },
+        );
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'تم إرسال بريد إلكتروني للتأكيد. يرجى التحقق من بريدك الوارد.')),
+          );
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+
+        if (authResponse.user == null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('فشل إنشاء الحساب')),
+            );
+          }
+        }
+      } on AuthException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.message)),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('حدث خطأ غير متوقع')),
+          );
+        }
+      }
     }
   }
 
@@ -80,7 +137,7 @@ class _RegisterPageState extends State<RegisterPage> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: Text(
-                          'رقم الهاتف أو البريد الإلكتروني',
+                          'البريد الإلكتروني',
                           style: GoogleFonts.cairo(
                             fontSize: 14,
                             color: Color(0xFF1F2937),
@@ -90,9 +147,9 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       SizedBox(height: 8),
                       TextFormField(
-                        controller: _identifierController,
+                        controller: _emailController,
                         decoration: InputDecoration(
-                          hintText: 'أدخل رقم هاتفك أو بريدك الإلكتروني',
+                          hintText: 'أدخل بريدك الإلكتروني',
                           hintStyle: GoogleFonts.cairo(
                             color: Color(0xFF9CA3AF),
                             fontSize: 13,
@@ -108,16 +165,17 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                         style: GoogleFonts.cairo(fontSize: 14),
                         textAlign: TextAlign.right,
+                        keyboardType: TextInputType.emailAddress,
                         validator: MultiValidator([
                           RequiredValidator(errorText: 'هذا الحقل مطلوب'),
-                          MinLengthValidator(3, errorText: 'أدخل قيمة صحيحة'),
+                          EmailValidator(errorText: 'أدخل بريدًا إلكترونيًا صحيحًا'),
                         ]),
                       ),
                       SizedBox(height: 16),
                       Align(
                         alignment: Alignment.centerRight,
                         child: Text(
-                          'اسمك الكامل',
+                          'رقم الهاتف',
                           style: GoogleFonts.cairo(
                             fontSize: 14,
                             color: Color(0xFF1F2937),
@@ -127,9 +185,150 @@ class _RegisterPageState extends State<RegisterPage> {
                       ),
                       SizedBox(height: 8),
                       TextFormField(
-                        controller: _nameController,
+                        controller: _phoneController,
                         decoration: InputDecoration(
-                          hintText: 'أدخل اسمك الكامل',
+                          hintText: 'أدخل رقم هاتفك',
+                          hintStyle: GoogleFonts.cairo(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Color(0xFFF5F7FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                        style: GoogleFonts.cairo(fontSize: 14),
+                        textAlign: TextAlign.right,
+                        keyboardType: TextInputType.phone,
+                        validator: MultiValidator([
+                          RequiredValidator(errorText: 'هذا الحقل مطلوب'),
+                          MinLengthValidator(10, errorText: 'أدخل رقم هاتف صحيح'),
+                        ]),
+                      ),
+                      SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'المحافظة',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            color: Color(0xFF1F2937),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _governorateController,
+                        decoration: InputDecoration(
+                          hintText: 'أدخل محافظتك',
+                          hintStyle: GoogleFonts.cairo(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Color(0xFFF5F7FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                        style: GoogleFonts.cairo(fontSize: 14),
+                        textAlign: TextAlign.right,
+                        validator: RequiredValidator(errorText: 'هذا الحقل مطلوب'),
+                      ),
+                      SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'المدينة',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            color: Color(0xFF1F2937),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _cityController,
+                        decoration: InputDecoration(
+                          hintText: 'أدخل مدينتك',
+                          hintStyle: GoogleFonts.cairo(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Color(0xFFF5F7FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                        style: GoogleFonts.cairo(fontSize: 14),
+                        textAlign: TextAlign.right,
+                        validator: RequiredValidator(errorText: 'هذا الحقل مطلوب'),
+                      ),
+                      SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'الشارع',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            color: Color(0xFF1F2937),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _streetController,
+                        decoration: InputDecoration(
+                          hintText: 'أدخل عنوان الشارع',
+                          hintStyle: GoogleFonts.cairo(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Color(0xFFF5F7FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                        style: GoogleFonts.cairo(fontSize: 14),
+                        textAlign: TextAlign.right,
+                        validator: RequiredValidator(errorText: 'هذا الحقل مطلوب'),
+                      ),
+                      SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'كلمة المرور',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            color: Color(0xFF1F2937),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          hintText: 'أدخل كلمة المرور',
                           hintStyle: GoogleFonts.cairo(
                             color: Color(0xFF9CA3AF),
                             fontSize: 13,
@@ -147,8 +346,51 @@ class _RegisterPageState extends State<RegisterPage> {
                         textAlign: TextAlign.right,
                         validator: MultiValidator([
                           RequiredValidator(errorText: 'هذا الحقل مطلوب'),
-                          MinLengthValidator(2, errorText: 'أدخل اسمًا صحيحًا'),
+                          MinLengthValidator(8, errorText: 'يجب أن تكون كلمة المرور 8 أحرف على الأقل'),
                         ]),
+                      ),
+                      SizedBox(height: 16),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          'تأكيد كلمة المرور',
+                          style: GoogleFonts.cairo(
+                            fontSize: 14,
+                            color: Color(0xFF1F2937),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 8),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          hintText: 'أعد إدخال كلمة المرور',
+                          hintStyle: GoogleFonts.cairo(
+                            color: Color(0xFF9CA3AF),
+                            fontSize: 13,
+                          ),
+                          filled: true,
+                          fillColor: Color(0xFFF5F7FA),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
+                        ),
+                        style: GoogleFonts.cairo(fontSize: 14),
+                        textAlign: TextAlign.right,
+                        validator: (val) {
+                          if (val == null || val.isEmpty) {
+                            return 'هذا الحقل مطلوب';
+                          }
+                          if (val != _passwordController.text) {
+                            return 'كلمة المرور غير متطابقة';
+                          }
+                          return null;
+                        },
                       ),
                       SizedBox(height: 24),
                       SizedBox(

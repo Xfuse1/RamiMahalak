@@ -3,7 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mahlak_nem/presentation/pages/app_colors.dart';
 
 class StorePage extends StatelessWidget {
-  const StorePage({super.key});
+  final Map<String, dynamic> store;
+
+  const StorePage({super.key, required this.store});
 
   // Dummy data for products in this store
   static final List<Map<String, dynamic>> storeProducts = [
@@ -32,9 +34,6 @@ class StorePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final store =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
