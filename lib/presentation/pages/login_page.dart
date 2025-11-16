@@ -46,6 +46,25 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  /// Resolve email for a given normalized phone using a backend helper (RPC).
+  Future<String?> _getEmailForPhone(String formattedPhone) async {
+    final supabase = Supabase.instance.client;
+    final result = await supabase.rpc(
+      'get_email_by_phone',
+      params: {'p_phone': formattedPhone},
+    );
+
+    if (result is String && result.isNotEmpty) {
+      return result;
+    }
+
+    if (result is Map && result['email'] is String) {
+      return result['email'] as String;
+    }
+
+    return null;
+  }
+
   /// Handle login using email or Egyptian phone number.
   Future<void> _handleLogin() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
@@ -64,16 +83,25 @@ class _LoginPageState extends State<LoginPage> {
       AuthResponse response;
 
       if (identifier.contains('@')) {
-        // Login with email.
+        // Login with email directly.
         response = await supabase.auth.signInWithPassword(
           email: identifier,
           password: password,
         );
       } else {
-        // Login with Egyptian phone number: normalize to +20xxxxxxxxxx.
+        // Login with Egyptian phone number:
+        // 1) normalize to +20xxxxxxxxxx
+        // 2) call backend helper to resolve the associated email
         final formattedPhone = formatEgyptPhone(identifier);
+        final emailForPhone = await _getEmailForPhone(formattedPhone);
+
+        if (emailForPhone == null) {
+          throw const AuthException(
+              'لا يوجد مستخدم مسجل بهذا الرقم، برجاء التحقق من الرقم');
+        }
+
         response = await supabase.auth.signInWithPassword(
-          phone: formattedPhone,
+          email: emailForPhone,
           password: password,
         );
       }
@@ -328,4 +356,3 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
-

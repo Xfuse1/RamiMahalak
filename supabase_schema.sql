@@ -83,3 +83,27 @@ FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "users_delete_own" ON public.users
 FOR DELETE USING (auth.uid() = id);
+
+-- 6) Helper function to look up email by normalized phone
+--    This is used by the Flutter app to allow login with phone OR email
+--    for the same underlying auth user.
+CREATE OR REPLACE FUNCTION public.get_email_by_phone(p_phone TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = auth, public
+AS $$
+DECLARE
+  v_email TEXT;
+BEGIN
+  SELECT u.email
+  INTO v_email
+  FROM auth.users AS u
+  WHERE u.raw_user_meta_data->>'phone' = p_phone
+  LIMIT 1;
+
+  RETURN v_email;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_email_by_phone(TEXT) TO anon;
