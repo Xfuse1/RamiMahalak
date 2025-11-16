@@ -1,8 +1,25 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:form_field_validator/form_field_validator.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mahlak_nem/core/constants/app_colors.dart';
+
+/// Helper to normalize Egyptian phone numbers to +20xxxxxxxxxx format.
+String formatEgyptPhone(String input) {
+  // Keep only digits.
+  String digits = input.replaceAll(RegExp(r'\D'), '');
+
+  if (digits.isEmpty) return '';
+
+  // Remove leading country code or zero if present.
+  if (digits.startsWith('20')) {
+    digits = digits.substring(2);
+  } else if (digits.startsWith('0')) {
+    digits = digits.substring(1);
+  }
+
+  return '+20$digits';
+}
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -34,54 +51,55 @@ class _RegisterPageState extends State<RegisterPage> {
   }
 
   Future<void> _submit() async {
-    if (_formKey.currentState?.validate() ?? false) {
-      try {
-        final email = _emailController.text.trim();
-        final password = _passwordController.text.trim();
-        final phone = _phoneController.text.trim();
-        final governorate = _governorateController.text.trim();
-        final city = _cityController.text.trim();
-        final street = _streetController.text.trim();
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
 
-        final authResponse = await Supabase.instance.client.auth.signUp(
-          email: email,
-          password: password,
-          data: {
-            'phone': phone,
-            'governorate': governorate,
-            'city': city,
-            'street': street,
-          },
+    try {
+      final email = _emailController.text.trim();
+      final password = _passwordController.text.trim();
+      final phone = _phoneController.text.trim();
+      final governorate = _governorateController.text.trim();
+      final city = _cityController.text.trim();
+      final street = _streetController.text.trim();
+
+      // Normalize Egyptian phone number to +20xxxxxxxxxx before sending to Supabase.
+      final formattedPhone = formatEgyptPhone(phone);
+
+      await Supabase.instance.client.auth.signUp(
+        // Supabase Dart allows either email OR phone here, not both.
+        email: email,
+        password: password,
+        data: {
+          // Store phone in user metadata in a normalized format.
+          'phone': formattedPhone,
+          'governorate': governorate,
+          'city': city,
+          'street': street,
+          'user_type': 'customer',
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                'تم إرسال بريد إلكتروني للتأكيد. يرجى التحقق من بريدك الوارد.'),
+          ),
         );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text(
-                    'تم إرسال بريد إلكتروني للتأكيد. يرجى التحقق من بريدك الوارد.')),
-          );
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-
-        if (authResponse.user == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('فشل إنشاء الحساب')),
-            );
-          }
-        }
-      } on AuthException catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.message)),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('حدث خطأ غير متوقع')),
-          );
-        }
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في المصادقة: ${e.message}')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('حدث خطأ غير متوقع: ${e.toString()}')),
+        );
       }
     }
   }
@@ -104,7 +122,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
+                      color: Colors.black.withOpacity(0.07),
                       blurRadius: 16,
                       offset: Offset(0, 4),
                     ),
@@ -398,7 +416,7 @@ class _RegisterPageState extends State<RegisterPage> {
                         child: ElevatedButton.icon(
                           onPressed: _submit,
                           icon: Icon(Icons.person_add, size: 18),
-                          label: Text('متابعة',
+                          label: Text('إنشاء حساب',
                               style: GoogleFonts.cairo(
                                   fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
@@ -414,8 +432,9 @@ class _RegisterPageState extends State<RegisterPage> {
                         ),
                       ),
                       SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
                         children: [
                           Text('لديك حساب بالفعل؟ ',
                               style: GoogleFonts.cairo(fontSize: 13)),
