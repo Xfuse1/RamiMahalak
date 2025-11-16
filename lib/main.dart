@@ -16,30 +16,23 @@ void main() {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'محلك',
       theme: ThemeData(
         primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFFF6F7FB),
       ),
-      // Start the app on the Home page for quick preview
       initialRoute: '/',
       routes: {
         '/': (context) => const HomePage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/forgot-password': (context) => const ForgotPasswordPage(),
-        '/store': (context) {
-          final store = ModalRoute.of(context)!.settings.arguments
-              as Map<String, dynamic>;
-          return const StorePage();
-        },
-        '/product': (context) {
-          final product = ModalRoute.of(context)!.settings.arguments
-              as Map<String, dynamic>;
-          return const ProductPage();
-        },
+        '/store': (context) => StorePage.sample(),
+        '/product': (context) => ProductPage.sample(),
       },
       debugShowCheckedModeBanner: false,
     );
